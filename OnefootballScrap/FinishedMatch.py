@@ -35,7 +35,7 @@ def get_events(list_of_elements):
         else:
             player_2 = ''
         event_detail = {
-            'time': int(re.findall(r'\d+', event_time)[0]),
+            'time': int(re.findall(r'\d+', event_time)[0]) if len(re.findall(r'\d+', event_time)) else event_time,
             'player_1': player_1,
             'player_2': player_2,
             'event': event_type
@@ -95,69 +95,75 @@ def get_all_match_information(match_url):
     cookies = driver.find_elements_by_xpath("//button[contains(@aria-label, 'Agree to our data processing and close')]")
     if len(cookies):
         cookies[0].click()
+        
+    # Verificar se o jogo não foi adiado
+    if not len(driver.find_elements_by_xpath("//span[contains(text(), 'Adiado')]")):
+    
+        # Quem está jogando:
+        search = driver.find_elements_by_xpath("//of-match-score-team")
+        teams = get_teams(search)
+
+        # Placar:
+        search = driver.find_elements_by_xpath("//p[contains(@class, 'match-score-scores')]")
+        score = get_score(search)
+
+        # Escalação dos times:
+        html = driver.page_source
+        soup = BeautifulSoup(html, "lxml")
+
+        home_team = []
+        for tag in soup.findAll('span', attrs={'class': re.compile('match-lineup-v2__player-name')}):
+            home_team.append(tag.text)
+
+        search_box = driver.find_elements_by_xpath("//button[contains(@title, '" + teams['away_team'] + "')]")
+        html = driver.page_source
+        soup = BeautifulSoup(html, "lxml")
+
+        away_team = []
+        for tag in soup.findAll('span', attrs={'class': re.compile('match-lineup-v2__player-name')}):
+            away_team.append(tag.text)
+
+        # Expandir a lista de eventos:
+        events_expand = driver.find_elements_by_xpath("//button[contains(@class, 'match-events__toggle-button')]")
+        if len(events_expand):
+            events_expand[0].click()
+
+        # Eventos:
+        events_tags = driver.find_elements_by_xpath("//li[contains(@class, 'match-events__item')]")
+        events = get_events(events_tags)
+
+        # Estatísticas:
+        stats_tags = driver.find_elements_by_xpath("//li[contains(@class, 'match-stats__list-item')]")
+        stats = get_stats(stats_tags)
+
+        # Informações da partida:
+        general_infos = driver.find_elements_by_xpath("//li[contains(@class, 'match-info__entry')]")
+        infos = get_infos(general_infos)
+
+        """
+        pprint('Teams:')
+        pprint(teams)
+
+        pprint('Score:')
+        pprint(score)
+
+        pprint('Home team:')
+        pprint(home_team)
+
+        pprint('Away team:')
+        pprint(away_team)
+
+        pprint('Events:')
+        pprint(events)
+
+        pprint('Stats:')
+        pprint(stats)
+
+        pprint('Infos:')
+        pprint(infos)
+        """
+        
+        return teams, score, home_team, away_team, events, stats, infos
+    
     else:
-        pprint('No cookies message displayed!')
-    
-    # Quem está jogando:
-    search = driver.find_elements_by_xpath("//of-match-score-team")
-    teams = get_teams(search)
-    
-    # Placar:
-    search = driver.find_elements_by_xpath("//p[contains(@class, 'match-score-scores')]")
-    score = get_score(search)
-    
-    # Escalação dos times:
-    html = driver.page_source
-    soup = BeautifulSoup(html, "lxml")
-    
-    home_team = []
-    for tag in soup.findAll('span', attrs={'class': re.compile('match-lineup-v2__player-name')}):
-        home_team.append(tag.text)
-        
-    search_box = driver.find_elements_by_xpath("//button[contains(@title, '" + teams['away_team'] + "')]")
-    html = driver.page_source
-    soup = BeautifulSoup(html, "lxml")
-    
-    away_team = []
-    for tag in soup.findAll('span', attrs={'class': re.compile('match-lineup-v2__player-name')}):
-        away_team.append(tag.text)
-        
-    # Expandir a lista de eventos:
-    events_expand = driver.find_elements_by_xpath("//button[contains(@class, 'match-events__toggle-button')]")
-    if len(events_expand):
-        events_expand[0].click()
-        
-    # Eventos:
-    events_tags = driver.find_elements_by_xpath("//li[contains(@class, 'match-events__item')]")
-    events = get_events(events_tags)
-    
-    # Estatísticas:
-    stats_tags = driver.find_elements_by_xpath("//li[contains(@class, 'match-stats__list-item')]")
-    stats = get_stats(stats_tags)
-    
-    # Informações da partida:
-    general_infos = driver.find_elements_by_xpath("//li[contains(@class, 'match-info__entry')]")
-    infos = get_infos(general_infos)
-    
-    pprint('Teams:')
-    pprint(teams)
-    
-    pprint('Score:')
-    pprint(score)
-    
-    pprint('Home team:')
-    pprint(home_team)
-    
-    pprint('Away team:')
-    pprint(away_team)
-    
-    pprint('Events:')
-    pprint(events)
-    
-    pprint('Stats:')
-    pprint(stats)
-    
-    pprint('Infos:')
-    pprint(infos)
-    
-    return teams, score, home_team, away_team, events, stats, infos
+        return ([] for i in range(7))
